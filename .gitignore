@@ -1,4 +1,4 @@
-google_creds.json
+.creds
 .env
 .cache
 .venv
