@@ -17,4 +17,4 @@ def upload_to_gsheet(client, sheet_name, df):
     sheet = client.open(sheet_name).sheet1
     data_to_upload = [df.columns.values.tolist()] + df.values.tolist()
     sheet.clear()
-    sheet.update('A1', data_to_upload)
+    sheet.update('A1', data_to_upload) 
