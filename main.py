@@ -6,7 +6,6 @@ from utils.utils_functions import extract_saved_tracks, upload_to_gsheet
 load_dotenv()
 
 def main():
-    print("THEO EST UN GROS GROS GENTIL")
     try:
         print("Connecting to APIs...")
         sp = get_spotify_client()
