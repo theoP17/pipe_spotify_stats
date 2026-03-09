@@ -21,6 +21,6 @@ def get_spotify_client():
 
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    json_path = 'google_creds.json'
+    json_path = '.creds/google_creds.json'
     creds = ServiceAccountCredentials.from_json_keyfile_name(json_path, scope)
     return gspread.authorize(creds)
