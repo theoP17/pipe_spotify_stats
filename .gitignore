@@ -1,4 +1,14 @@
-.creds
+# Environment variables
 .env
+
+# Authentication caches
 .cache
-.venv
+
+# Google Credentials
+google_creds.json
+.creds/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
