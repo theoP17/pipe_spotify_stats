@@ -12,3 +12,4 @@ google_creds.json
 .venv/
 __pycache__/
 *.pyc
+.DS_Store
