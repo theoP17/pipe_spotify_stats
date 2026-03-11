@@ -1,60 +1,59 @@
 import pandas as pd
-import requests
-from datetime import datetime
+import spotipy
 
 def extract_playlist_tracks(sp, playlist_id):
-    # 1. Get the access token
-    token = sp.auth_manager.get_access_token(as_dict=False)
+    try:
+        # USE THIS: This automatically attaches the Bearer Token
+        results = sp.playlist_items(playlist_id)
 
-    # 2. Call the /items endpoint
-    url = f"https://api.spotify.com/v1/playlists/{playlist_id}/items"
-    headers = {"Authorization": f"Bearer {token}"}
-    params = {"limit": 50, "additional_types": "track"}
+        tracks = []
+        for item in results.get('items', []):
+            track = item.get('track')
+            if not track or not track.get('name'):
+                continue
 
-    response = requests.get(url, headers=headers, params=params)
-    if response.status_code != 200:
-        raise Exception(f"Spotify API Error: {response.status_code} - {response.text}")
+            tracks.append({
+                'Artist': track['artists'][0]['name'] if track['artists'] else 'Unknown',
+                'Track Name': track['name'],
+                'Album': track['album']['name'],
+                'Added At': item.get('added_at'),
+                'Added By (ID)': item.get('added_by', {}).get('id', 'Unknown'),
+                'Spotify URL': track['external_urls'].get('spotify', '')
+            })
 
-    results = response.json()
-    tracks = []
-    user_names = {} # Cache to store IDs and their Pseudos
+        return pd.DataFrame(tracks)
 
-    for item in results.get('items', []):
-        track = item.get('track')
-        if not track: continue
+    except spotipy.exceptions.SpotifyException as e:
+        # This will catch 403s and 401s and tell you exactly why
+        print(f"❌ Spotify API Error: {e.http_status} - {e.msg}")
+        return pd.DataFrame()
 
-        # Get the ID of the person who added the track
-        user_id = item.get('added_by', {}).get('id')
+def upload_to_gsheet(client, spreadsheet_id, df):
+    if df.empty:
+        print("No data extracted.")
+        return
 
-        # If we haven't looked up this user's pseudo yet, do it now
-        if user_id not in user_names:
-            try:
-                user_profile = sp.user(user_id)
-                user_names[user_id] = user_profile.get('display_name') or user_id
-            except:
-                user_names[user_id] = user_id # Fallback to ID if lookup fails
-
-        tracks.append({
-            'Artist': track['artists']['name'],
-            'Track Name': track['name'],
-            'Album': track['album']['name'],
-            'Added At': item.get('added_at'),
-            'Added By': user_names[user_id],
-            'Spotify URL': track['external_urls'].get('spotify')
-        })
-
-    return pd.DataFrame(tracks)
-
-def upload_to_gsheet(client, sheet_name, df):
-    sh = client.open(sheet_name)
+    # 1. Opening the sheet:
+    # If spreadsheet_id is the long alphanumeric string in the URL, use open_by_key
+    # If it's the actual Title, use open()
+    sh = client.open_by_key(spreadsheet_id)
 
     try:
-        # Static target: 'Extract'
         worksheet = sh.worksheet('Extract')
     except:
-        worksheet = sh.add_worksheet(title='Extract', rows=100, cols=20)
-        print("Created missing 'Extract' tab.")
+        # Note: rows and cols must be integers, not strings
+        worksheet = sh.add_worksheet(title='Extract', rows=1000, cols=20)
 
-    data_to_upload = [df.columns.values.tolist()] + df.values.tolist()
+    # 2. Prepare data
+    # We replace NaN with empty strings and convert everything to string
+    # to avoid JSON serialization errors with dates or None types.
+    df_clean = df.fillna("").astype(str)
+    data_to_upload = [df_clean.columns.values.tolist()] + df_clean.values.tolist()
+
+    # 3. Execution
     worksheet.clear()
-    worksheet.update('A1', data_to_upload)
+
+    # Using 'value_input_option' is crucial for ensuring dates/numbers
+    # are treated correctly by Google Sheets logic.
+    worksheet.update('A1', data_to_upload, value_input_option='RAW')
+    print("✅ Google Sheet 'Extract' tab updated!")

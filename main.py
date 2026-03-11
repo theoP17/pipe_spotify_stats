@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from utils.utils_auth import get_spotify_client, get_gspread_client
-# Update the import to match the new function name
 from utils.utils_functions import extract_playlist_tracks, upload_to_gsheet
 
 load_dotenv()
@@ -17,19 +16,22 @@ def main():
 
         print("Connecting to APIs...")
         sp = get_spotify_client()
-        gs = get_gspread_client()
+        gs = get_gspread_client() # 'gs' is your Google Sheets client
 
         print(f"Extracting tracks from playlist ID: {playlist_id}...")
-        # Use the new playlist extraction function
         df = extract_playlist_tracks(sp, playlist_id)
 
-        print(f"Updating Google Sheet: {sheet_name}...")
-        upload_to_gsheet(gs, sheet_name, df)
-
-        print("Automation Successful!")
+        # 2. Check if DF is empty before uploading
+        if not df.empty:
+            print(f"Updating Google Sheet: {sheet_name}...")
+            # Use 'gs', not 'gc'
+            upload_to_gsheet(gs, sheet_name, df)
+            print("✅ Automation Successful!")
+        else:
+            print("⚠️ No data extracted. Check if the playlist is empty or private.")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"❌ An error occurred: {e}")
 
 if __name__ == '__main__':
     main()
